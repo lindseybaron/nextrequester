@@ -1,2 +1,6 @@
+# operating system you're running (osx or linux only)
 platform: osx
+# version of Google Chrome you currently have installed (78, 79, or 80)
+# yes, the same Google Chrome you use to log into Facebook.
+# yes, it has to be Google Chrome, unless you feel like writing code.
 chrome_version: 79
