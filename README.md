@@ -19,7 +19,11 @@ git clone git@github.com:lindseybaron/nextrequester.git
 cd nextrequester
 pip install -r requirements.txt
 ```
-1. Set config values 
+1. Set config values in `./config.yaml`
+1. Run like so (but with your own values obvs):
+```shell script
+python src/nr.py batch [request-id] [account-email] [password]
+```
 
 ## Use
 
