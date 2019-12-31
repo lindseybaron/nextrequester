@@ -1,4 +1,4 @@
-# nextrequester
+# nextrequester (wip)
 
 A hacky bit of python and selenium to navigate the atrociously designed NextRequest public records request websites.
 
@@ -12,9 +12,13 @@ A hacky bit of python and selenium to navigate the atrociously designed NextRequ
 
 1. Clone the repo
   ```shell script
-git clone 
+git clone git@github.com:lindseybaron/nextrequester.git
 ```
 1. Install requirements
+```shell script
+cd nextrequester
+pip install -r requirements.txt
+```
 1. Set config values 
 
 ## Use
