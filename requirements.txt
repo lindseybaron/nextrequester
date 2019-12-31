@@ -1,0 +1,4 @@
+PyYAML
+fire
+polling
+selenium
