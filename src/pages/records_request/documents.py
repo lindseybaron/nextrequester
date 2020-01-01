@@ -3,6 +3,7 @@ import polling
 from pages.element import Element
 from pages.records_request.locators import RecordRequestLocators as Locators
 from util.constants import SELENIUM_SLEEP_INTERVAL, SELENIUM_WAIT_TIME
+from util.file import file_exists
 
 
 class Documents(Element):
@@ -120,9 +121,9 @@ class Documents(Element):
         return [link for link in section_next_links if 'disabled' not in link.get_attribute('class')]
 
     @staticmethod
-    def download_missing(links, downloaded):
+    def download_missing(links, downloaded, req_id=None):
         for link in links:
-            if link.get_attribute('href') not in downloaded:
+            if not file_exists(link.text, request_id=req_id) and link.get_attribute('href') not in downloaded:
                 link.click()
                 downloaded.add(link.get_attribute('href'))
 
@@ -155,13 +156,13 @@ class Documents(Element):
         while self.has_collapsed_toggles():
             [self.expand_toggle(toggle) for toggle in self.collapsed_toggles]
 
-    def download_files(self):
+    def download_files(self, req_id=None):
         self.wait_for_loaded()
         self.expand_all_toggles()
         self.wait_for_loaded()
 
         links = set(self.document_links)
-        downloaded = self.download_missing(links, set())
+        downloaded = self.download_missing(links, set(), req_id=req_id)
 
         # while active next links exists, click the first one and add any new links to set
         while self.main_active_next_link:
@@ -171,12 +172,12 @@ class Documents(Element):
                 self.wait_for_loaded()
                 self.expand_all_toggles()
                 self.wait_for_loaded()
-                downloaded = self.download_missing(links=self.document_links, downloaded=downloaded)
+                downloaded = self.download_missing(links=self.document_links, downloaded=downloaded, req_id=req_id)
             self.wait_for_loaded()
             self.main_active_next_link.click()
             self.wait_for_loaded()
             self.expand_all_toggles()
             self.wait_for_loaded()
-            downloaded = self.download_missing(links=self.document_links, downloaded=downloaded)
+            downloaded = self.download_missing(links=self.document_links, downloaded=downloaded, req_id=req_id)
 
 

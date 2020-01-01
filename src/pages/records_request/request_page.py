@@ -41,4 +41,4 @@ class RequestPage(Page):
         return RequestHistory(self.driver)
 
     def download_all_files(self):
-        self.documents.download_files()
+        self.documents.download_files(req_id=self.request_id)

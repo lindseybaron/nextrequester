@@ -1,4 +1,8 @@
-from util.driver import parse_secret
+import os
+
+import yaml
+
+from util.constants import CONFIG_PATH, ROOT_DIR
 
 MISSING_EMAIL_MSG = ('No email address provided for login. ',
                      'Pass via command line with --email=XXXXX or set in secret.yaml in project root directory')
@@ -50,3 +54,24 @@ def load_user(email=None, pw=None):
         'email': email,
         'pw': pw
     }
+
+
+def parse_config():
+    with open(CONFIG_PATH) as file:
+        return yaml.load(file, Loader=yaml.FullLoader)
+
+
+def parse_secret():
+    secret_path = os.path.abspath(os.path.join(ROOT_DIR, 'secret.yaml'))
+
+    if os.path.exists(secret_path):
+        with open(secret_path) as file:
+            return yaml.load(file, Loader=yaml.FullLoader)
+
+
+def get_platform():
+    platform = os.uname()
+    if 'Darwin' in platform:
+        return 'osx'
+    elif 'Linux' in platform:
+        return 'linux'

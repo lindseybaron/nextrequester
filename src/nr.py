@@ -23,5 +23,6 @@ class NextRequest(object):
 
 
 if __name__ == '__main__':
-    next_requester = NextRequest()
-    fire.Fire(next_requester)
+    NextRequest.batch('19-4996')
+    # next_requester = NextRequest()
+    # fire.Fire(next_requester)
