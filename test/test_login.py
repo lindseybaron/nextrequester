@@ -14,4 +14,3 @@ class TestLogin:
 
         message = driver.find_element(By.CLASS_NAME, 'alert-bar.alert-bar--primary').text
         assert 'signed in' in message
-

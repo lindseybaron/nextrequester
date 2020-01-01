@@ -19,7 +19,7 @@ class NextRequest(object):
 
         request_page = RequestPage(driver, request_id=req)
         request_page.visit()
-        # request_page.download_all_files()
+        request_page.download_all_files()
 
 
 if __name__ == '__main__':
