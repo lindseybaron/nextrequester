@@ -3,11 +3,15 @@ import os
 from util.config import parse_config
 
 
-def file_exists(filename, request_id=None):
+def file_exists(link, request_id=None):
+    filename = link.text
     dl_dir = os.path.join(get_download_dir(), request_id if request_id else get_download_dir())
     path = os.path.join(dl_dir, filename)
     if os.path.exists(path):
-        print('File {} already exists at {}. Skipping.'.format(filename, path))
+        print('File {} already exists at {}.'.format(filename, path))
+        # TODO: binary compare files to prevent duplicate downloads
+
+    return True
 
 
 def get_download_dir():

@@ -123,7 +123,9 @@ class Documents(Element):
     @staticmethod
     def download_missing(links, downloaded, req_id=None):
         for link in links:
-            if not file_exists(link.text, request_id=req_id) and link.get_attribute('href') not in downloaded:
+            if not file_exists(link, request_id=req_id) and link.get_attribute('href') not in downloaded:
+                # Note: this only prevents duplicate downloads in the current run.
+                # If the file already existed prior to running the command, it may still download it.
                 link.click()
                 downloaded.add(link.get_attribute('href'))
 
@@ -179,5 +181,3 @@ class Documents(Element):
             self.expand_all_toggles()
             self.wait_for_loaded()
             downloaded = self.download_missing(links=self.document_links, downloaded=downloaded, req_id=req_id)
-
-
