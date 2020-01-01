@@ -1,6 +1,12 @@
 # operating system you're running (osx or linux only)
-platform: osx
+platform: linux
+
 # version of Google Chrome you currently have installed (78, 79, or 80)
 # yes, the same Google Chrome you use to log into Facebook.
 # yes, it has to be Google Chrome, unless you feel like writing code.
 chrome_version: 79
+
+# the full path of the directory where you want all the files to be downloaded to.
+# if none or invalid, will default to the default download directory for Chrome
+# (usually ~/Downloads)
+download_dir: /home/lmb/nr_data
