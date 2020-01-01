@@ -3,12 +3,20 @@ import os
 import yaml
 from selenium import webdriver
 
-from util.constants import CONFIG_PATH, BIN_DIR
+from util.constants import CONFIG_PATH, BIN_DIR, ROOT_DIR
 
 
 def parse_config():
     with open(CONFIG_PATH) as file:
         return yaml.load(file, Loader=yaml.FullLoader)
+
+
+def parse_secret():
+    secret_path = os.path.abspath(os.path.join(ROOT_DIR, 'secret.yaml'))
+
+    if os.path.exists(secret_path):
+        with open(secret_path) as file:
+            return yaml.load(file, Loader=yaml.FullLoader)
 
 
 def get_platform():
@@ -57,11 +65,13 @@ def get_download_dir():
         return
 
 
-def get_driver(request_id):
+def get_driver(request_id=None):
     options = webdriver.ChromeOptions()
 
     # set download directory
     download_dir = get_download_dir()
+    if download_dir and request_id:
+        download_dir = os.path.join(download_dir, request_id)
     # if download_dir isn't set in config, use default
     if download_dir:
         print('Downloading files to {}.'.format(download_dir))
