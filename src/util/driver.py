@@ -75,7 +75,8 @@ def get_driver(request_id=None):
     # if download_dir isn't set in config, use default
     if download_dir:
         print('Downloading files to {}.'.format(download_dir))
-        options.add_argument("download.default_directory={}".format(download_dir))
+        prefs = {'download.default_directory': download_dir}
+        options.add_experimental_option('prefs', prefs)
 
     # set binary path
     binary_path = get_binary_path()
