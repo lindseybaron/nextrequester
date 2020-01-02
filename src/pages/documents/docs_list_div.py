@@ -4,6 +4,7 @@ import polling
 
 from pages.documents.locators import DocumentsLocators as Locators
 from pages.element import Element
+from util.wait import wait_until
 
 
 class DocumentsList(Element):
@@ -15,25 +16,27 @@ class DocumentsList(Element):
 
     @property
     def result_rows(self):
-        return self.find_elements(*Locators.LIST_ROW)
+        rows = self.find_elements(*Locators.LIST_ROW)
+        print('Found {} rows.'.format(len(rows)))
+        return rows
 
     def is_loaded(self):
         loading_div = self.find_element(*Locators.DOCS_LOADING)
         style = loading_div.get_attribute('style')
+        link_count = len(self.find_elements(*Locators.ROW_DOC_LINK))
+        row_count = len(self.find_elements(*Locators.LIST_ROW))
         if not style:
-            return True
+            return link_count == row_count
         elif 'opacity' in style:
             opacity = [o for o in style.split('; ') if re.search('opacity', o)][0].split(': ')[1]
-            return opacity == '0'
+            return opacity == '0' and link_count == row_count
 
     def get_visible_results(self):
         results = []
         self.wait_for_loaded()
-        polling.poll(
-            lambda: self.is_loaded(),
-            step=1,
-            timeout=30,
-        )
+        wait_until(self.is_loaded())
+
+        print('loaded')
 
         for row in self.result_rows:
             doc_url = row.find_element(*Locators.ROW_DOC_LINK).get_attribute('href')

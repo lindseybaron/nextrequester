@@ -32,10 +32,19 @@ class DocumentsPage(Page):
     def pagination(self):
         return DocumentsPagination(self.driver)
 
+    def is_loaded(self):
+        return self.documents.is_loaded()
+
     def has_pagy(self):
         return len(self.driver.find_elements(*Locators.DOCS_PAGY)) > 0
 
+    def show_most(self):
+        if self.has_pagy():
+            if self.pagination.has_show_per_page():
+                self.pagination.per_page_picker.show_most()
+
     def download_results(self, results):
+        print('Downloading {} results...'.format(len(results)))
         for result in results:
             dl_dir = os.path.join(get_download_dir(), 'documents')
             dl_path = os.path.join(dl_dir, result['filename'].replace('/', '-'))
@@ -46,17 +55,18 @@ class DocumentsPage(Page):
                 f.write(response.content)
 
     def download_all_files(self):
+        # show max results per page
+        self.show_most()
+
         # get rows from first page
         self.download_results(self.documents.get_visible_results())
+
         # check for pagination
         if self.has_pagy() and self.pagination.has_next_page():
             # iterate over pages and get rows from each page
             current_page = 1
-            # show max results per page
-            if self.pagination.has_show_per_page():
-                self.pagination.per_page_picker.show_most()
-
             page_count = self.pagination.get_page_count()
+
             while current_page < page_count:
                 self.pagination.go_to_next_page()
                 print('Getting results for page {}...'.format(self.pagination.current_page.text))
