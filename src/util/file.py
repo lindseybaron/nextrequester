@@ -22,7 +22,6 @@ def get_download_dir():
         download_dir = os.path.abspath(download_dir_path)
         # if download_dir is valid, use that
         if os.path.exists(download_dir):
-            print('Found {}.'.format(download_dir_path))
             return download_dir_path
         else:
             # if download_dir doesn't exist, try to create it

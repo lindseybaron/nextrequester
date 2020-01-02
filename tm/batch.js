@@ -85,8 +85,6 @@
 
   function grabVisibleLinks(el) {
     let links = el.querySelectorAll('.document-link');
-    // console.log('> found ' + links.length + ' links.');
-
     return parseDownloadLinks(links);
   }
 

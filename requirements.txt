@@ -1,5 +1,6 @@
-PyYAML
-pytest
+beautifulsoup4
 fire
 polling
+pytest
+PyYAML
 selenium

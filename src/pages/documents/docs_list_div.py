@@ -1,6 +1,6 @@
 import re
 
-import polling
+from bs4 import BeautifulSoup as bs
 
 from pages.documents.locators import DocumentsLocators as Locators
 from pages.element import Element
@@ -40,7 +40,11 @@ class DocumentsList(Element):
 
         for row in self.result_rows:
             doc_url = row.find_element(*Locators.ROW_DOC_LINK).get_attribute('href')
-            filename = row.find_element(*Locators.ROW_DOC_LINK).text
+
+            # get the full filename from the doc page, because the list tends to cut them off
+            doc_response = self.driver.request('GET', doc_url)
+            filename = bs(doc_response.content, 'html.parser').select('div.published')[0].get_text().strip()
+
             print('[ File: {} | URL: {} ]'.format(filename, doc_url))
             results.append({
                 'doc_url': doc_url,
