@@ -35,7 +35,5 @@ class NextRequest(object):
 
 
 if __name__ == '__main__':
-    # NextRequest.batch('19-4996')
-    NextRequest.alldocs()
-    # next_requester = NextRequest()
-    # fire.Fire(next_requester)
+    next_requester = NextRequest()
+    fire.Fire(next_requester)
