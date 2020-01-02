@@ -1,7 +1,10 @@
+import polling
+from selenium.webdriver.common.by import By
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as ec
 
-from util.constants import SELENIUM_WAIT_TIME
+from pages.locators import Locators
+from util.constants import SELENIUM_WAIT_TIME, SELENIUM_SLEEP_INTERVAL
 
 
 class Element:
@@ -26,8 +29,32 @@ class Element:
         return WebDriverWait(self.driver, SELENIUM_WAIT_TIME).until(
             ec.visibility_of_any_elements_located(self.locator))
 
-    def find(self, locator):
-        return self.driver.find_element(*locator)
+    def find_element(self, by, locator):
+        _self = self.driver.find_element(*self.locator)
+        return _self.find_element(by, locator)
 
-    def find_all(self, locator):
-        return self.driver.find_elements(*locator)
+    def find_elements(self, by, locator):
+        _self = self.driver.find_element(*self.locator)
+        return _self.find_elements(by, locator)
+
+    def find_element_by_text(self, text):
+        _self = self.driver.find_element(*self.locator)
+        xpath = '//*[text()="{}"]'.format(text)
+        return _self.find_element(By.XPATH, xpath)
+
+    def find_children(self):
+        _self = self.driver.find_element(*self.locator)
+        return _self.find_elements(*Locators.CHILDREN)
+
+    def wait_for_loaded(self):
+        """Wait until this element has finished loading.
+
+        Returns:
+            bool: True if loading has completed.
+        """
+        polling.poll(
+            lambda: 'loading' not in self.text and len(self.find_elements(*Locators.LOADER)) < 1,
+            step=SELENIUM_SLEEP_INTERVAL,
+            timeout=SELENIUM_WAIT_TIME,
+        )
+        return True

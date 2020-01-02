@@ -1,6 +1,7 @@
 import os
 
 from selenium import webdriver
+from seleniumrequests import Chrome
 
 from util.config import parse_config, get_platform
 from util.constants import BIN_DIR
@@ -20,13 +21,13 @@ def get_binary_path():
     return path
 
 
-def get_driver(request_id=None):
+def get_driver(sub_dir=None):
     options = webdriver.ChromeOptions()
 
     # set download directory
     download_dir = get_download_dir()
-    if download_dir and request_id:
-        download_dir = os.path.join(download_dir, request_id)
+    if download_dir and sub_dir:
+        download_dir = os.path.join(download_dir, sub_dir)
     # if download_dir isn't set in config, use default
     if download_dir:
         print('Downloading files to {}.'.format(download_dir))
@@ -36,4 +37,7 @@ def get_driver(request_id=None):
     # set binary path
     binary_path = get_binary_path()
 
-    return webdriver.Chrome(binary_path, options=options)
+    driver = Chrome(binary_path, options=options)
+    driver.maximize_window()
+
+    return driver

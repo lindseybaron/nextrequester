@@ -1,4 +1,4 @@
-from pages.login.locators import LoginPageLocators
+from pages.login.locators import LoginPageLocators as Locators
 from pages.page import Page
 from util.checkbox import check_box
 from util.constants import LOGIN_URL
@@ -12,19 +12,19 @@ class LoginPage(Page):
 
     @property
     def email_field(self):
-        return self.driver.find_element(*LoginPageLocators.EMAIL_FIELD)
+        return self.driver.find_element(*Locators.EMAIL_FIELD)
 
     @property
     def password_field(self):
-        return self.driver.find_element(*LoginPageLocators.PASSWORD_FIELD)
+        return self.driver.find_element(*Locators.PASSWORD_FIELD)
 
     @property
     def remember_box(self):
-        return self.driver.find_element(*LoginPageLocators.REMEMBER_ME_BOX)
+        return self.driver.find_element(*Locators.REMEMBER_ME_BOX)
 
     @property
     def submit_button(self):
-        return self.driver.find_element(*LoginPageLocators.SUBMIT_BUTTON)
+        return self.driver.find_element(*Locators.SUBMIT_BUTTON)
 
     def login(self, email, password):
         self.visit()

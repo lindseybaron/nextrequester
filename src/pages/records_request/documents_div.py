@@ -1,12 +1,9 @@
-import polling
-
 from pages.element import Element
 from pages.records_request.locators import RecordRequestLocators as Locators
-from util.constants import SELENIUM_SLEEP_INTERVAL, SELENIUM_WAIT_TIME
 from util.file import file_exists
 
 
-class Documents(Element):
+class RecordRequestDocuments(Element):
     locator = Locators.DOCUMENTS
 
     @property
@@ -17,7 +14,7 @@ class Documents(Element):
             List(WebElement): Document links.
         """
         self.wait_for_loaded()
-        return self.find_all(Locators.DOCUMENT_LINK)
+        return self.find_elements(*Locators.DOCUMENT_LINK)
 
     @property
     def hidden_sections(self):
@@ -26,7 +23,7 @@ class Documents(Element):
         Returns:
             List(WebElement): Nested sections.
         """
-        return self.find_all(Locators.HIDDEN_SECTION)
+        return self.find_elements(*Locators.FOLDER)
 
     @property
     def hidden_section_toggle_icons(self):
@@ -36,7 +33,7 @@ class Documents(Element):
             List(WebElement): Toggle icons.
         """
         self.wait_for_loaded()
-        return self.find_all(Locators.SECTION_TOGGLE)
+        return self.find_elements(*Locators.FOLDER_TOGGLE)
 
     @property
     def collapsed_toggles(self):
@@ -46,7 +43,7 @@ class Documents(Element):
             List(WebElement): Collapsed toggle icons.
         """
         self.wait_for_loaded()
-        return self.find_all(Locators.COLLAPSED_TOGGLE)
+        return self.find_elements(*Locators.FOLDER_COLLAPSED_TOGGLE)
 
     @property
     def main_nav(self):
@@ -55,7 +52,7 @@ class Documents(Element):
         Returns:
             WebElement: Nav for main documents.
         """
-        navs = self.find_all(Locators.MAIN_NAV)
+        navs = self.find_elements(*Locators.DOCS_MAIN_NAV)
         if len(navs) > 1:
             raise ValueError
         elif len(navs) > 0:
@@ -81,7 +78,7 @@ class Documents(Element):
         """
         self.wait_for_loaded()
         if self.main_nav:
-            return self.main_nav.find_element(Locators.NAVIGATION_ACTIVE)
+            return self.main_nav.find_element(Locators.NAV_ACTIVE)
 
     @property
     def main_nav_first(self):
@@ -92,7 +89,7 @@ class Documents(Element):
         """
         self.wait_for_loaded()
         if self.main_nav:
-            return list(filter(lambda p: p.text == '1', self.main_nav.find_elements(Locators.NAVIGATION_PAGE)))[0]
+            return list(filter(lambda p: p.text == '1', self.main_nav.find_elements(Locators.NAV_PAGE)))[0]
 
     @property
     def main_active_next_link(self):
@@ -121,28 +118,15 @@ class Documents(Element):
         return [link for link in section_next_links if 'disabled' not in link.get_attribute('class')]
 
     @staticmethod
-    def download_missing(links, downloaded, req_id=None):
+    def download_missing(links, downloaded, sub_dir=None):
         for link in links:
-            if not file_exists(link, request_id=req_id) and link.get_attribute('href') not in downloaded:
+            if not file_exists(link, sub_dir=sub_dir) and link.get_attribute('href') not in downloaded:
                 # Note: this only prevents duplicate downloads in the current run.
                 # If the file already existed prior to running the command, it may still download it.
                 link.click()
                 downloaded.add(link.get_attribute('href'))
 
         return downloaded
-
-    def wait_for_loaded(self):
-        """Wait until the documents section of the page has finished loading.
-
-        Returns:
-            bool: True if loading has completed.
-        """
-        polling.poll(
-            lambda: 'loading' not in self.text,
-            step=SELENIUM_SLEEP_INTERVAL,
-            timeout=SELENIUM_WAIT_TIME,
-        )
-        return True
 
     def expand_toggle(self, toggle):
         self.wait_for_loaded()
@@ -158,13 +142,13 @@ class Documents(Element):
         while self.has_collapsed_toggles():
             [self.expand_toggle(toggle) for toggle in self.collapsed_toggles]
 
-    def download_files(self, req_id=None):
+    def download_files(self, sub_dir=None):
         self.wait_for_loaded()
         self.expand_all_toggles()
         self.wait_for_loaded()
 
         links = set(self.document_links)
-        downloaded = self.download_missing(links, set(), req_id=req_id)
+        downloaded = self.download_missing(links, set(), sub_dir=sub_dir)
 
         # while active next links exists, click the first one and add any new links to set
         while self.main_active_next_link:
@@ -174,10 +158,10 @@ class Documents(Element):
                 self.wait_for_loaded()
                 self.expand_all_toggles()
                 self.wait_for_loaded()
-                downloaded = self.download_missing(links=self.document_links, downloaded=downloaded, req_id=req_id)
+                downloaded = self.download_missing(links=self.document_links, downloaded=downloaded, sub_dir=sub_dir)
             self.wait_for_loaded()
             self.main_active_next_link.click()
             self.wait_for_loaded()
             self.expand_all_toggles()
             self.wait_for_loaded()
-            downloaded = self.download_missing(links=self.document_links, downloaded=downloaded, req_id=req_id)
+            downloaded = self.download_missing(links=self.document_links, downloaded=downloaded, sub_dir=sub_dir)

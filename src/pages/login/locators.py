@@ -1,7 +1,9 @@
 from selenium.webdriver.common.by import By
 
+from pages.locators import Locators
 
-class LoginPageLocators:
+
+class LoginPageLocators(Locators):
 
     LOGIN_FORM = (By.ID, 'new_user')
     EMAIL_FIELD = (By.ID, 'user_email')

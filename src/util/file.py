@@ -3,9 +3,9 @@ import os
 from util.config import parse_config
 
 
-def file_exists(link, request_id=None):
+def file_exists(link, sub_dir=None):
     filename = link.text
-    dl_dir = os.path.join(get_download_dir(), request_id if request_id else get_download_dir())
+    dl_dir = os.path.join(get_download_dir(), sub_dir if sub_dir else get_download_dir())
     path = os.path.join(dl_dir, filename)
     if os.path.exists(path):
         print('File {} already exists at {}.'.format(filename, path))

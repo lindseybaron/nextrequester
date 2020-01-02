@@ -1,12 +1,12 @@
-from pages.records_request.documents import Documents
+from pages.records_request.documents_div import RecordRequestDocuments
 from pages.page import Page
-from pages.records_request.history import RequestHistory
-from pages.records_request.locators import RecordRequestLocators
-from pages.records_request.request_info import RequestInfo
+from pages.records_request.history_div import RecordRequestHistory
+from pages.records_request.locators import RecordRequestLocators as Locators
+from pages.records_request.info_div import RecordRequestInfo
 from util.constants import REQUEST_URL
 
 
-class RequestPage(Page):
+class RecordRequestPage(Page):
 
     def __init__(self, driver, **kwargs):
         super().__init__(driver, **kwargs)
@@ -18,27 +18,27 @@ class RequestPage(Page):
 
     @property
     def loader(self):
-        return self.driver.find_element(*RecordRequestLocators.LOADER)
+        return self.driver.find_element(*Locators.LOADER)
 
     @property
     def request_header(self):
-        return self.driver.find_element(*RecordRequestLocators.REQUEST_HEADER)
+        return self.driver.find_element(*Locators.REQUEST_HEADER)
 
     @property
     def filtered_by(self):
-        return self.driver.find_element(*RecordRequestLocators.FILTERED_BY)
+        return self.driver.find_element(*Locators.REQUEST_FILTERED_BY)
 
     @property
     def request_info(self):
-        return RequestInfo(self.driver)
+        return RecordRequestInfo(self.driver)
 
     @property
     def documents(self):
-        return Documents(self.driver)
+        return RecordRequestDocuments(self.driver)
 
     @property
     def history(self):
-        return RequestHistory(self.driver)
+        return RecordRequestHistory(self.driver)
 
     def download_all_files(self):
-        self.documents.download_files(req_id=self.request_id)
+        self.documents.download_files(sub_dir=self.request_id)
