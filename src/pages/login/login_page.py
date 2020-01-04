@@ -27,10 +27,12 @@ class LoginPage(Page):
         return self.driver.find_element(*Locators.SUBMIT_BUTTON)
 
     def login(self, email, password):
+        print('Visiting login...')
         self.visit()
         self.set_email(email)
         self.set_password(password)
         self.remember_me()
+        print('Logging in as {}...'.format(email))
         self.submit()
 
     def set_email(self, email):

@@ -1,10 +1,15 @@
+import asyncio
+
 import fire
+import requests
 
 from pages.documents.documents_page import DocumentsPage
 from pages.login.login_page import LoginPage
 from pages.records_request.request_page import RecordRequestPage
+from util.auth import login
 from util.config import load_user
 from util.driver import get_driver
+from util.fetch import download_all_documents
 
 
 class NextRequest(object):
@@ -23,17 +28,14 @@ class NextRequest(object):
 
     @staticmethod
     def alldocs(user=None, pw=None):
+        rsession = requests.Session()
+        login(rsession, load_user(email=user, pw=pw))
 
-        user = load_user(user, pw)
-
-        driver = get_driver(sub_dir='documents')
-        LoginPage(driver).login(user['email'], user['pw'])
-
-        docs_page = DocumentsPage(driver)
-        docs_page.visit()
-        docs_page.download_all_files()
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(download_all_documents(rsession=rsession))
 
 
 if __name__ == '__main__':
-    next_requester = NextRequest()
-    fire.Fire(next_requester)
+    NextRequest.alldocs()
+    # next_requester = NextRequest()
+    # fire.Fire(next_requester)

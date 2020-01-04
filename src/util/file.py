@@ -35,3 +35,26 @@ def get_download_dir():
     else:
         print('No download directory specified. Using default Chrome download directory (probably ~/Downloads).')
         return
+
+
+def parse_document_id(url):
+    url_parts = url.split('/')
+    return url_parts[len(url_parts) - 1]
+
+
+def parse_file_ext(filename):
+    parts = filename.split('.')
+    return parts[len(parts) - 1]
+
+
+def build_filename(header_element, url):
+    h3 = header_element.find('h3')
+    if h3:
+        h3_text = h3.text
+        _filename = h3_text.strip().replace('/', '-').replace(':', '-').replace(' ', '_').replace('&', '-')
+        ext = parse_file_ext(_filename)
+        return '{} [{}].{}'.format(
+            _filename.replace(ext, ''),
+            parse_document_id(url),
+            ext,
+        )

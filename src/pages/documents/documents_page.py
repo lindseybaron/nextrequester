@@ -8,6 +8,7 @@ from pages.documents.locators import DocumentsLocators as Locators
 from pages.page import Page
 from util.constants import DOCUMENTS_URL
 from util.file import get_download_dir
+from util.wait import wait_until
 
 
 class DocumentsPage(Page):
@@ -32,6 +33,23 @@ class DocumentsPage(Page):
     def pagination(self):
         return DocumentsPagination(self.driver)
 
+    def visit_with_params(self, page=None, per_page=None):
+        url = self.build_url(page=page, per_page=per_page)
+
+        self.driver.get(url)
+        wait_until(self.is_loaded())
+
+    def build_url(self, page=None, per_page=None):
+        _params = []
+        if page:
+            _params.append('documents_smart_listing[page]={}'.format(page))
+        if per_page:
+            _params.append('documents_smart_listing[per_page]={}'.format(per_page))
+        _params.append('documents_smart_listing[sort][count]=desc')
+
+        params = "&".join(_params)
+        return '{}?{}'.format(self.url, params)
+
     def is_loaded(self):
         return self.documents.is_loaded()
 
@@ -53,23 +71,3 @@ class DocumentsPage(Page):
             response = self.driver.request('GET', url)
             with open(dl_path, 'wb') as f:
                 f.write(response.content)
-
-    def download_all_files(self):
-        # show max results per page
-        self.show_most()
-
-        # get rows from first page
-        self.download_results(self.documents.get_visible_results())
-
-        # check for pagination
-        if self.has_pagy() and self.pagination.has_next_page():
-            # iterate over pages and get rows from each page
-            current_page = 1
-            page_count = self.pagination.get_page_count()
-
-            while current_page < page_count:
-                self.pagination.go_to_next_page()
-                print('Getting results for page {}...'.format(self.pagination.current_page.text))
-                self.download_results(self.documents.get_visible_results())
-
-                current_page = int(self.pagination.current_page.text)
