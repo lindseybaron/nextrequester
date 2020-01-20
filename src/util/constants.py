@@ -13,6 +13,7 @@ CHROME_PATH = os.path.abspath(os.path.join(ROOT_DIR, 'bin/chromedriver'))
 BASE_URL = 'https://lacity.nextrequest.com'
 LOGIN_URL = BASE_URL + '/users/sign_in'
 REQUEST_URL = BASE_URL + '/requests/{request_id}'
+REQUESTS_URL = BASE_URL + '/requests'
 DOCUMENTS_URL = BASE_URL + '/documents'
 
 # browser

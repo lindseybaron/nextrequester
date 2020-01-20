@@ -3,9 +3,8 @@ import os
 from selenium import webdriver
 from seleniumrequests import Chrome
 
-from util.config import parse_config, get_platform
+from util.config import parse_config, get_platform, get_download_dir
 from util.constants import BIN_DIR
-from util.file import get_download_dir
 
 
 def get_binary_path():

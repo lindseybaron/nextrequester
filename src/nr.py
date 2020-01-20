@@ -3,39 +3,37 @@ import asyncio
 import fire
 import requests
 
-from pages.documents.documents_page import DocumentsPage
-from pages.login.login_page import LoginPage
-from pages.records_request.request_page import RecordRequestPage
-from util.auth import login
+from util.auth import login_session
 from util.config import load_user
-from util.driver import get_driver
-from util.fetch import download_all_documents
+from util.fetch import download_all_documents, download_all_request_files, print_all_requests
 
 
 class NextRequest(object):
 
     @staticmethod
-    def batch(req, user=None, pw=None):
+    def req(req, user=None, pw=None):
+        user = load_user(email=user, pw=pw)
 
-        user = load_user(user, pw)
-
-        driver = get_driver(sub_dir=req)
-        LoginPage(driver).login(user['email'], user['pw'])
-
-        request_page = RecordRequestPage(driver, request_id=req)
-        request_page.visit()
-        request_page.download_all_files()
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(download_all_request_files(user=user, req_id=req))
 
     @staticmethod
     def alldocs(user=None, pw=None):
         rsession = requests.Session()
-        login(rsession, load_user(email=user, pw=pw))
+        login_session(rsession, load_user(email=user, pw=pw))
 
         loop = asyncio.get_event_loop()
         loop.run_until_complete(download_all_documents(rsession=rsession))
 
+    @staticmethod
+    def allreqs(user=None, pw=None):
+        rsession = requests.Session()
+        login_session(rsession, load_user(email=user, pw=pw))
+
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(print_all_requests(rsession=rsession))
+
 
 if __name__ == '__main__':
-    NextRequest.alldocs()
-    # next_requester = NextRequest()
-    # fire.Fire(next_requester)
+    next_requester = NextRequest()
+    fire.Fire(next_requester)
