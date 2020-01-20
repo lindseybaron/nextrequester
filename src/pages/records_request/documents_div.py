@@ -1,5 +1,8 @@
+from selenium.webdriver.common.by import By
+
 from pages.element import Element
 from pages.records_request.locators import RecordRequestLocators as Locators
+from pages.records_request.section_div import PublicDocs, RequesterDocs
 from util.file import file_exists
 
 
@@ -17,23 +20,35 @@ class RecordRequestDocuments(Element):
         return self.find_elements(*Locators.DOCUMENT_LINK)
 
     @property
-    def hidden_sections(self):
+    def doc_box(self):
+        return self.find_element(*Locators.DOCUMENTS_BOX)
+
+    @property
+    def public_docs(self):
+        return PublicDocs(self.driver)
+
+    @property
+    def requester_docs(self):
+        return RequesterDocs(self.driver)
+
+    @property
+    def doc_sections(self):
+        self.wait_for_loaded()
+        sections = []
+        if self.public_docs:
+            sections.append(self.public_docs)
+        if self.requester_docs:
+            sections.append(self.requester_docs)
+        return sections
+
+    @property
+    def folders(self):
         """List of nested (expandable) sections visible on the page in its current state.
 
         Returns:
             List(WebElement): Nested sections.
         """
         return self.find_elements(*Locators.FOLDER)
-
-    @property
-    def hidden_section_toggle_icons(self):
-        """List of toggle icons for nested (expandable) sections visible on the page in its current state.
-
-        Returns:
-            List(WebElement): Toggle icons.
-        """
-        self.wait_for_loaded()
-        return self.find_elements(*Locators.FOLDER_TOGGLE)
 
     @property
     def collapsed_toggles(self):
@@ -52,44 +67,11 @@ class RecordRequestDocuments(Element):
         Returns:
             WebElement: Nav for main documents.
         """
-        navs = self.find_elements(*Locators.DOCS_MAIN_NAV)
+        navs = self.find_elements(*Locators.DOCS_REQUESTER_PAGY)
         if len(navs) > 1:
             raise ValueError
         elif len(navs) > 0:
             return navs[0]
-
-    @property
-    def main_nav_next(self):
-        """Next button of the page navigation for the main Documents container.
-
-        Returns:
-            WebElement: Next link for main documents.
-        """
-        self.wait_for_loaded()
-        if self.main_nav:
-            return self.main_nav.find_element(Locators.NAVIGATION_NEXT)
-
-    @property
-    def main_nav_active(self):
-        """Active page of the page navigation for the main Documents container.
-
-        Returns:
-            WebElement: Active page of main documents.
-        """
-        self.wait_for_loaded()
-        if self.main_nav:
-            return self.main_nav.find_element(Locators.NAV_ACTIVE)
-
-    @property
-    def main_nav_first(self):
-        """First page of the page navigation for the main Documents container.
-
-        Returns:
-            WebElement: First page of main documents.
-        """
-        self.wait_for_loaded()
-        if self.main_nav:
-            return list(filter(lambda p: p.text == '1', self.main_nav.find_elements(Locators.NAV_PAGE)))[0]
 
     @property
     def main_active_next_link(self):
@@ -99,7 +81,7 @@ class RecordRequestDocuments(Element):
             WebElement: Active Next link for main Documents.
         """
         self.wait_for_loaded()
-        next_links = self.main_nav.find_elements(*Locators.NAVIGATION_NEXT)
+        next_links = self.main_nav.find_elements(*Locators.PAGY_NEXT)
         active_links = list(filter(lambda n: 'disabled' not in n.get_attribute('class'), next_links))
         if active_links:
             return active_links[0]
@@ -113,8 +95,8 @@ class RecordRequestDocuments(Element):
         """
         self.wait_for_loaded()
         section_next_links = set()
-        for section in self.hidden_sections:
-            section_next_links.update(section.find_elements(*Locators.NAVIGATION_NEXT))
+        for section in self.folders:
+            section_next_links.update(section.find_elements(*Locators.PAGY_NEXT))
         return [link for link in section_next_links if 'disabled' not in link.get_attribute('class')]
 
     @staticmethod

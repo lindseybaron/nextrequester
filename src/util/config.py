@@ -2,7 +2,7 @@ import os
 
 import yaml
 
-from util.constants import CONFIG_PATH, ROOT_DIR
+from util.constants import CONFIG_PATH, ROOT_DIR, DATA_DIR
 
 MISSING_EMAIL_MSG = ('No email address provided for login. ',
                      'Pass via command line with --email=XXXXX or set in secret.yaml in project root directory')
@@ -75,3 +75,28 @@ def get_platform():
         return 'osx'
     elif 'Linux' in platform:
         return 'linux'
+
+
+def get_download_dir():
+    config = parse_config()
+    secret = parse_secret()
+    if 'download_dir' in config.keys():
+        download_dir_path = config['download_dir']
+    elif 'download_dir' in secret.keys():
+        download_dir_path = secret['download_dir']
+    else:
+        download_dir_path = DATA_DIR
+
+    download_dir = os.path.abspath(download_dir_path)
+    # if download_dir is valid, use that
+    if os.path.exists(download_dir):
+        return download_dir_path
+    else:
+        # if download_dir doesn't exist, try to create it
+        print('Could not find {}. Attempting to create it...'.format(download_dir_path))
+        try:
+            os.mkdir(download_dir)
+            print('Created {}.'.format(download_dir_path))
+            return download_dir_path
+        except FileExistsError as e:
+            print(e)

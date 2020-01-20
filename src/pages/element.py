@@ -8,6 +8,7 @@ from util.constants import SELENIUM_WAIT_TIME, SELENIUM_SLEEP_INTERVAL
 
 
 class Element:
+    locator = ()
 
     def __init__(self, driver, locator=None, **kwargs):
         self.driver = driver

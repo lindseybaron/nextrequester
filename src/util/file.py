@@ -1,6 +1,6 @@
 import os
 
-from util.config import parse_config
+from util.config import get_download_dir
 
 
 def file_exists(link, sub_dir=None):
@@ -14,24 +14,24 @@ def file_exists(link, sub_dir=None):
     return True
 
 
-def get_download_dir():
-    config = parse_config()
-    download_dir_path = config.get('download_dir', '')
+def parse_document_id(url):
+    url_parts = url.split('/')
+    return url_parts[len(url_parts) - 1]
 
-    if download_dir_path:
-        download_dir = os.path.abspath(download_dir_path)
-        # if download_dir is valid, use that
-        if os.path.exists(download_dir):
-            return download_dir_path
-        else:
-            # if download_dir doesn't exist, try to create it
-            print('Could not find {}. Attempting to create it...'.format(download_dir_path))
-            try:
-                os.mkdir(download_dir)
-                print('Created {}.'.format(download_dir_path))
-                return download_dir_path
-            except FileExistsError as e:
-                print(e)
-    else:
-        print('No download directory specified. Using default Chrome download directory (probably ~/Downloads).')
-        return
+
+def parse_file_ext(filename):
+    parts = filename.split('.')
+    return parts[len(parts) - 1]
+
+
+def build_filename(header_element, url):
+    h3 = header_element.find('h3')
+    if h3:
+        h3_text = h3.text
+        _filename = h3_text.strip().replace('/', '-').replace(':', '-').replace(' ', '_').replace('&', '-')
+        ext = parse_file_ext(_filename)
+        return '{} [{}].{}'.format(
+            _filename.replace('.{}'.format(ext), ''),
+            parse_document_id(url),
+            ext,
+        )
