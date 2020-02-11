@@ -1,13 +1,11 @@
 import polling
-from selenium.common.exceptions import StaleElementReferenceException
 from selenium.webdriver.common.by import By
-from bs4 import BeautifulSoup as bs
 
 from pages.page import Page
 from pages.records_request.documents_div import RecordRequestDocuments
 from pages.records_request.locators import RecordRequestLocators as Locators
-from util.constants import REQUEST_URL, SELENIUM_SLEEP_INTERVAL, SELENIUM_WAIT_TIME
-from util.wait import wait_until
+from util.constants import REQUEST_URL, WAIT_INTERVAL, LONG_WAIT_TIME
+from util.print import print_pagy
 
 
 class RecordRequestPage(Page):
@@ -18,43 +16,65 @@ class RecordRequestPage(Page):
 
     @property
     def url(self):
+        """URL of the current records request page.
+
+        Returns:
+            str: Full URL of the records request page.
+        """
         return REQUEST_URL.format(request_id=self.request_id)
 
     @property
     def loader(self):
+        """Spinning loader element that indicates the page is still loading.
+
+        Returns:
+            WebElement: Loader element.
+        """
         _loaders = self.driver.find_elements(*Locators.LOADER)
         if len(_loaders) > 0:
             return _loaders[0]
 
     @property
-    def request_header(self):
-        return self.driver.find_element(*Locators.REQUEST_HEADER)
-
-    @property
     def documents(self):
+        """The Documents section of the records request page.
+
+        Returns:
+            WebElement: Documents div.
+        """
         return RecordRequestDocuments(self.driver)
 
-    @staticmethod
-    def has_active_next(pagy):
-        next_link = pagy.find_element(By.CLASS_NAME, 'page.next')
-        return 'disabled' not in next_link.get_attribute('class')
+    def parse_link_data(self, link_elements):
+        """Parse and return the URL and filename of each document link provided.
 
-    def is_loaded(self):
-        polling.poll(
-            lambda: 'loading' not in self.documents.text and not self.loader,
-            step=SELENIUM_SLEEP_INTERVAL,
-            timeout=SELENIUM_WAIT_TIME,
-        )
-        return True
+        Args:
+            link_elements ([WebElement]): List of link elements to parse.
 
-    @staticmethod
-    def parse_link_data(link_elements):
-        return [{'url': l.get_attribute('href'), 'filename': l.text.strip()} for l in link_elements]
+        Returns:
+            [dict]: List of dictionaries containing the URL and filename from each link element.
+        """
+        self.documents.wait_for_loaded()
+        hrefs = []
+        for link in link_elements:
+            url = link.get_attribute('href')
+            filename = link.text.strip()
+            hrefs.append({
+                'url': url,
+                'filename': filename,
+            })
+        return hrefs
 
-    def get_folder_doc_urls(self, section):
+    def collect_folder_doc_urls(self, section_element):
+        """Collect and return the URL and filename of each document link in a documents section.
+
+        Args:
+            section_element (WebElement): Target section div of the documents section.
+
+        Returns:
+            [dict]: List of dictionaries containing the URL and filename from each link element in the section.
+        """
         link_data = []
         # expand the folders
-        for folder in section.folders:
+        for folder in section_element.find_elements(*Locators.FOLDER):
             folder.find_element(*Locators.FOLDER_TOGGLE).click()
             self.documents.wait_for_loaded()
             link_data.extend(self.parse_link_data(folder.find_elements(*Locators.DOCUMENT_LINK)))
@@ -70,17 +90,88 @@ class RecordRequestPage(Page):
         return link_data
 
     def collect_all_document_urls(self):
+        """Collect and return the URL and filename of all document links in the records request.
+
+        Returns:
+            [dict]: List of dictionaries containing the URL and filename from each link element in the request.
+        """
         link_data = []
 
         for section in self.documents.doc_sections:
-            link_data.extend(self.parse_link_data(section.doc_links))
-            link_data.extend(self.get_folder_doc_urls(section))
+            section_element = self.documents.find_element(By.ID, section['id'])
+            doc_links = section_element.find_elements(*Locators.DOCUMENT_LINK)
+            folder_doc_links = self.collect_folder_doc_urls(section_element)
 
-            if section.pagy:
-                while section.has_active_next:
-                    section.pagy.find_element(By.CLASS_NAME, 'next').click()
+            bolds_count = len(section_element.find_elements(By.TAG_NAME, 'b'))
+            if bolds_count > 0:
+                total_count = section_element.find_elements(By.TAG_NAME, 'b')[bolds_count - 1].text
+            else:
+                total_count = 0
+            print('Section contains a total of {} document links.'.format(total_count))
+
+            link_data.extend(doc_links)
+            link_data.extend(folder_doc_links)
+
+            if len(section_element.find_elements(By.XPATH, '//*[@id="{}"]/nav'.format(section['id']))) == 1:
+                def pagy():
+                    """To avoid stale element errors, find the pagination element each time it's needed,
+                        as opposed to storing the element.
+
+                    Returns:
+                        WebElement: Pagination element.
+                    """
                     self.documents.wait_for_loaded()
-                    link_data.extend(self.parse_link_data(section.doc_links))
-                    link_data.extend(self.get_folder_doc_urls(section))
+                    return section_element.find_element(By.XPATH, '//*[@id="{}"]/nav'.format(section['id']))
+
+                def current_page():
+                    self.documents.wait_for_loaded()
+                    self.documents.wait_for_loaded()
+                    if len(pagy().find_elements(*Locators.PAGY_ACTIVE)) < 1:
+                        polling.poll(
+                            lambda: len(pagy().find_elements(*Locators.PAGY_ACTIVE)) > 0,
+                            step=WAIT_INTERVAL,
+                            timeout=LONG_WAIT_TIME,
+                        )
+                    return pagy().find_element(*Locators.PAGY_ACTIVE)
+
+                def next_page():
+                    self.documents.wait_for_loaded()
+                    return pagy().find_element(By.LINK_TEXT, str(int(current_page().text) + 1))
+
+                def wait_for_page_active(page_number):
+                    """Wait until the next page is active.
+
+                    Returns:
+                        bool: True if next page is active.
+                    """
+                    print('Current page: {}'.format(current_page().text))
+                    print('Waiting for page {}...'.format(page_number))
+                    self.documents.wait_for_loaded()
+                    polling.poll(
+                        lambda: page_number in current_page().text,
+                        step=WAIT_INTERVAL,
+                        timeout=LONG_WAIT_TIME,
+                    )
+                    return True
+
+                while len(pagy().find_elements(*Locators.PAGY_NEXT)) == 1 and 'disabled' not in pagy().find_element(
+                        *Locators.PAGY_NEXT).get_attribute('class'):
+                    start_count = len(link_data)
+                    start_page = current_page().text
+                    print_pagy(pagy())
+                    if 'disabled' not in pagy().find_element(*Locators.PAGY_NEXT).get_attribute('class'):
+                        print('Navigating to page {}...'.format(next_page().text))
+                        self.documents.wait_for_loaded()
+
+                        next_link = pagy().find_element(*Locators.PAGY_NEXT)
+                        next_link.click()
+                        self.documents.wait_for_loaded()
+                        wait_for_page_active(str(int(start_page) + 1))
+
+                        link_data.extend(self.parse_link_data(section_element.find_elements(*Locators.DOCUMENT_LINK)))
+                        link_data.extend(self.collect_folder_doc_urls(section_element))
+
+                        print('Collected {} new document links. Total: {} of {}'.format(
+                            str(len(link_data) - start_count), len(link_data), total_count))
 
         return link_data

@@ -4,7 +4,7 @@ from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as ec
 
 from pages.locators import Locators
-from util.constants import SELENIUM_WAIT_TIME, SELENIUM_SLEEP_INTERVAL
+from util.constants import WAIT_TIME, WAIT_INTERVAL, LONG_WAIT_TIME
 
 
 class Element:
@@ -23,11 +23,11 @@ class Element:
         return self.get().text
 
     def get(self):
-        return WebDriverWait(self.driver, SELENIUM_WAIT_TIME).until(
+        return WebDriverWait(self.driver, WAIT_TIME).until(
             ec.visibility_of_element_located(self.locator))
 
     def get_all(self):
-        return WebDriverWait(self.driver, SELENIUM_WAIT_TIME).until(
+        return WebDriverWait(self.driver, WAIT_TIME).until(
             ec.visibility_of_any_elements_located(self.locator))
 
     def find_element(self, by, locator):
@@ -55,7 +55,7 @@ class Element:
         """
         polling.poll(
             lambda: 'loading' not in self.text and len(self.find_elements(*Locators.LOADER)) < 1,
-            step=SELENIUM_SLEEP_INTERVAL,
-            timeout=SELENIUM_WAIT_TIME,
+            step=WAIT_INTERVAL,
+            timeout=LONG_WAIT_TIME,
         )
         return True

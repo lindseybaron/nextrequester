@@ -36,9 +36,24 @@ class RecordRequestDocuments(Element):
         self.wait_for_loaded()
         sections = []
         if self.public_docs:
-            sections.append(self.public_docs)
+            section = self.public_docs
+            id = self.public_docs.id
+            print('Found section [{}]'.format(id))
+            sections.append({
+                'element': section,
+                'id': id,
+            })
         if self.requester_docs:
-            sections.append(self.requester_docs)
+            section = self.requester_docs
+            id = self.requester_docs.id
+            print('Found section [{}]'.format(id))
+            sections.append({
+                'element': section,
+                'id': id,
+            })
+            # sections.append(self.requester_docs)
+            # print('Found section [%]'.format(self.requester_docs.id))
+
         return sections
 
     @property

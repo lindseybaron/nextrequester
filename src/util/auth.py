@@ -25,6 +25,7 @@ sign_in_headers = {
 def login_driver(driver, user):
     driver.delete_all_cookies()
 
+    print('Logging in as {}...'.format(user['email']))
     _login_response = driver.request('GET', LOGIN_URL, headers=initial_headers)
     _login_soup = bs(_login_response.content, 'html.parser')
     _token = _login_soup.find(attrs={"name": "csrf-token"})['content']
