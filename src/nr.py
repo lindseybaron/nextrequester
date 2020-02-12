@@ -20,9 +20,7 @@ class NextRequest(object):
             pw (str): The password for the user account. Can also be set in secret.yaml.
         """
         user = load_user(email=user, pw=pw)
-
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(download_all_request_files(user=user, req_id=req))
+        download_all_request_files(user=user, req_id=req)
 
     @staticmethod
     def alldocs(user=None, pw=None):
@@ -56,9 +54,5 @@ class NextRequest(object):
 
 
 if __name__ == '__main__':
-    # NextRequest.req('19-7100')
-    # NextRequest.req('19-4996')
-    # NextRequest.alldocs()
-    # NextRequest.allreqs()
     next_requester = NextRequest()
     fire.Fire(next_requester)

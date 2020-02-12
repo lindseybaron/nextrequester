@@ -22,18 +22,6 @@ sign_in_headers = {
 }
 
 
-def login_driver(driver, user):
-    driver.delete_all_cookies()
-
-    print('Logging in as {}...'.format(user['email']))
-    _login_response = driver.request('GET', LOGIN_URL, headers=initial_headers)
-    _login_soup = bs(_login_response.content, 'html.parser')
-    _token = _login_soup.find(attrs={"name": "csrf-token"})['content']
-    token = urllib.parse.quote_plus(_token)
-    login_params = build_login_params(token=token, email=user['email'], pw=user['pw'])
-    driver.request('POST', LOGIN_URL, headers=sign_in_headers, params=login_params)
-
-
 def login_session(session, user):
     session.cookies.clear()
     _login_response = session.request('GET', LOGIN_URL, headers=initial_headers)

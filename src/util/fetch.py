@@ -13,6 +13,21 @@ from util.constants import DOCUMENTS_URL, BASE_URL, REQUESTS_URL
 from util.file import build_filename, parse_document_id
 
 
+def download_file(session, url, filename, sub_dir=None):
+    response = session.get(url)
+    print('{} : {}'.format(url, response.status_code))
+    if sub_dir:
+        dl_dir = os.path.join(get_download_dir(), sub_dir)
+    else:
+        dl_dir = get_download_dir()
+    dl_path = os.path.join(dl_dir, filename.replace('/', '-').replace(':', '-'))
+
+    with open(dl_path, 'wb') as file:
+        file.write(response.content)
+        print('Saved {} to {}...'.format(url, dl_path))
+        file.close()
+
+
 async def afetch(session, url):
     async with session.get(url) as response:
         print('fetching {}...'.format(url))
@@ -38,7 +53,7 @@ async def adownload_file(session, url, filename, sub_dir=None):
             print('Saved {} to {}...'.format(url, dl_path))
 
 
-async def download_all_request_files(user, req_id):
+def download_all_request_files(user, req_id):
 
     rsession = requests.session()
     login_session(session=rsession, user=user)
@@ -69,24 +84,23 @@ async def download_all_request_files(user, req_id):
         page_response = rsession.get(
             '{}/documents/batch?request_id={}&state=requester&page={}'.format(BASE_URL, request_id, str(page)))
         page_text = page_response.text
-        doc_matches = re.findall('/documents/([0-9]*)/download[^>]*>([^<]*)', page_text)
+        doc_matches = set(re.findall('/documents/([0-9]*)/download[^>]*>([^<]*)', page_text))
         for match in doc_matches:
             link_data.append({
                 'url': '{}/documents/{}/download'.format(BASE_URL, match[0]),
                 'filename': match[1],
             })
 
-        # use asession to asynchronously fetch each of the urls in the list
-        asession = aiohttp.ClientSession(
-            headers=rsession.headers,
-            cookies=rsession.cookies,
-        )
+        for link in link_data:
+            if link['url']:
+                download_file(
+                    session=rsession,
+                    url=link['url'],
+                    filename=link['filename'],
+                    sub_dir=req_id,
+                )
 
-        # download each file and save it to the appropriate location
-        await asyncio.gather(
-            *[adownload_file(asession, d['url'], d['filename'], sub_dir=req_id) for d in link_data if d['url']])
-
-        await asession.close()
+    rsession.close()
 
 
 async def download_all_documents(rsession):
