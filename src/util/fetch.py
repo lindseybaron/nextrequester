@@ -2,6 +2,7 @@ import asyncio
 import math
 import os
 import re
+from pathlib import Path
 
 import aiohttp
 import requests
@@ -27,8 +28,13 @@ async def adownload_file_with_client(url, filename, headers, cookies, sub_dir=No
         async with client.get(url, retry_attempts=3) as response:
             if sub_dir:
                 dl_dir = os.path.join(get_download_dir(), sub_dir)
+                # if directory doesn't exist, create it
+                Path(dl_dir).mkdir(parents=True, exist_ok=True)
             else:
                 dl_dir = get_download_dir()
+                # if directory doesn't exist, create it
+                Path(dl_dir).mkdir(parents=True, exist_ok=True)
+                
             dl_path = os.path.join(dl_dir, filename.replace('/', '-').replace(':', '-'))
             _file = await response.read()
 
