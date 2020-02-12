@@ -56,5 +56,9 @@ class NextRequest(object):
 
 
 if __name__ == '__main__':
+    # NextRequest.req('19-7100')
+    # NextRequest.req('19-4996')
+    # NextRequest.alldocs()
+    # NextRequest.allreqs()
     next_requester = NextRequest()
     fire.Fire(next_requester)

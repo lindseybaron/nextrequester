@@ -1,5 +1,3 @@
-from selenium.webdriver.common.by import By
-
 from pages.element import Element
 from pages.records_request.locators import RecordRequestLocators as Locators
 from pages.records_request.section_div import PublicDocs, RequesterDocs
@@ -37,22 +35,20 @@ class RecordRequestDocuments(Element):
         sections = []
         if self.public_docs:
             section = self.public_docs
-            id = self.public_docs.id
-            print('Found section [{}]'.format(id))
+            _id = self.public_docs.id
+            print('Found section [{}]'.format(_id))
             sections.append({
                 'element': section,
-                'id': id,
+                'id': _id,
             })
         if self.requester_docs:
             section = self.requester_docs
-            id = self.requester_docs.id
-            print('Found section [{}]'.format(id))
+            _id = self.requester_docs.id
+            print('Found section [{}]'.format(_id))
             sections.append({
                 'element': section,
-                'id': id,
+                'id': _id,
             })
-            # sections.append(self.requester_docs)
-            # print('Found section [%]'.format(self.requester_docs.id))
 
         return sections
 
@@ -125,19 +121,16 @@ class RecordRequestDocuments(Element):
 
         return downloaded
 
-    def expand_toggle(self, toggle):
-        self.wait_for_loaded()
-        if 'fa-caret-right' in toggle.get_attribute('class'):
-            toggle.click()
-
-    def has_collapsed_toggles(self):
-        self.wait_for_loaded()
-        return len(self.collapsed_toggles) > 0
-
     def expand_all_toggles(self):
+
+        def expand_toggle(toggle):
+            self.wait_for_loaded()
+            if 'fa-caret-right' in toggle.get_attribute('class'):
+                toggle.click()
+
         self.wait_for_loaded()
-        while self.has_collapsed_toggles():
-            [self.expand_toggle(toggle) for toggle in self.collapsed_toggles]
+        while len(self.collapsed_toggles) > 0:
+            [expand_toggle(toggle) for toggle in self.collapsed_toggles]
 
     def download_files(self, sub_dir=None):
         self.wait_for_loaded()

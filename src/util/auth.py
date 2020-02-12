@@ -2,7 +2,7 @@ import urllib.parse
 
 from bs4 import BeautifulSoup as bs
 
-from util.constants import LOGIN_URL
+from util.constants import LOGIN_URL, BASE_URL
 
 initial_headers = {
     'User-Agent': ' '.join([
@@ -54,3 +54,10 @@ def build_login_params(token, email, pw):
         'user[remember_me]=1',
         'button=',
     ])
+
+
+def get_csrf_token(session):
+    response = session.get(BASE_URL)
+    soup = bs(response.content)
+
+    return soup.find(attrs={"name": "csrf-token"})['content']

@@ -5,6 +5,7 @@ from pages.page import Page
 from pages.records_request.documents_div import RecordRequestDocuments
 from pages.records_request.locators import RecordRequestLocators as Locators
 from util.constants import REQUEST_URL, WAIT_INTERVAL, LONG_WAIT_TIME
+from util.find import flaky_find
 from util.print import print_pagy
 
 
@@ -121,22 +122,24 @@ class RecordRequestPage(Page):
                         WebElement: Pagination element.
                     """
                     self.documents.wait_for_loaded()
-                    return section_element.find_element(By.XPATH, '//*[@id="{}"]/nav'.format(section['id']))
+                    return flaky_find(section_element, (By.XPATH, '//*[@id="{}"]/nav'.format(section['id'])))
 
                 def current_page():
                     self.documents.wait_for_loaded()
                     self.documents.wait_for_loaded()
-                    if len(pagy().find_elements(*Locators.PAGY_ACTIVE)) < 1:
-                        polling.poll(
-                            lambda: len(pagy().find_elements(*Locators.PAGY_ACTIVE)) > 0,
-                            step=WAIT_INTERVAL,
-                            timeout=LONG_WAIT_TIME,
-                        )
-                    return pagy().find_element(*Locators.PAGY_ACTIVE)
+                    # _pagy = pagy()
+                    # actives = _pagy.find_elements(*Locators.PAGY_ACTIVE)
+                    # if len(actives) < 1:
+                    #     polling.poll(
+                    #         lambda: len(pagy().find_elements(*Locators.PAGY_ACTIVE)) > 0,
+                    #         step=WAIT_INTERVAL,
+                    #         timeout=LONG_WAIT_TIME,
+                    #     )
+                    return flaky_find(pagy(), Locators.PAGY_ACTIVE)
 
                 def next_page():
                     self.documents.wait_for_loaded()
-                    return pagy().find_element(By.LINK_TEXT, str(int(current_page().text) + 1))
+                    return flaky_find(pagy(), (By.LINK_TEXT, str(int(current_page().text) + 1)))
 
                 def wait_for_page_active(page_number):
                     """Wait until the next page is active.
@@ -144,8 +147,6 @@ class RecordRequestPage(Page):
                     Returns:
                         bool: True if next page is active.
                     """
-                    print('Current page: {}'.format(current_page().text))
-                    print('Waiting for page {}...'.format(page_number))
                     self.documents.wait_for_loaded()
                     polling.poll(
                         lambda: page_number in current_page().text,
@@ -162,9 +163,11 @@ class RecordRequestPage(Page):
                     if 'disabled' not in pagy().find_element(*Locators.PAGY_NEXT).get_attribute('class'):
                         print('Navigating to page {}...'.format(next_page().text))
                         self.documents.wait_for_loaded()
+                        wait_for_page_active(current_page().text)
 
-                        next_link = pagy().find_element(*Locators.PAGY_NEXT)
+                        next_link = flaky_find(pagy(), Locators.PAGY_NEXT)
                         next_link.click()
+
                         self.documents.wait_for_loaded()
                         wait_for_page_active(str(int(start_page) + 1))
 
