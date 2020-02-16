@@ -1,19 +1,19 @@
 import asyncio
 import math
 import os
-import re
-import time
 from pathlib import Path
 
+import aiofiles as aiofiles
 import aiohttp
-import requests
-from aiohttp_retry import RetryClient
+from aiohttp import ClientResponseError, ClientConnectionError
 from bs4 import BeautifulSoup as bs
 
-from util.auth import login, get_csrf_token
-from util.config import get_download_dir, load_user
-from util.constants import DOCUMENTS_URL, BASE_URL, REQUESTS_URL
+from util.auth import login
+from util.config import get_download_dir
+from util.constants import DOCUMENTS_URL, BASE_URL, REQUESTS_URL, DOCUMENTS_SECTIONS, DEFAULT_HEADERS
 from util.file import build_filename, parse_document_id
+from util.parse import parse_doc_link, parse_request_id, parse_folder_label, fetch_folder_soup, fetch_section_soup, \
+    fetch_folder_page_soup, parse_folder_page_count, parse_section_page_count, fetch_section_page_soup
 
 
 async def afetch(session, url):
@@ -25,88 +25,141 @@ async def afetch(session, url):
 
 
 async def adownload_file(url, filename, headers, cookies, sub_dir=None, msg=None):
-    async with RetryClient(headers=headers, cookies=cookies) as client:
-        async with client.get(url, retry_attempts=3) as response:
-            if sub_dir:
-                dl_dir = os.path.join(get_download_dir(), sub_dir)
-                # if directory doesn't exist, create it
-                Path(dl_dir).mkdir(parents=True, exist_ok=True)
-            else:
-                dl_dir = get_download_dir()
-                # if directory doesn't exist, create it
-                Path(dl_dir).mkdir(parents=True, exist_ok=True)
 
-            dl_path = os.path.join(dl_dir, filename.replace('/', '-').replace(':', '-'))
-            _file = await response.read()
+    # prepare path
+    if sub_dir:
+        dl_dir = os.path.join(get_download_dir(), sub_dir)
+        # if directory doesn't exist, create it
+        Path(dl_dir).mkdir(parents=True, exist_ok=True)
+    else:
+        dl_dir = get_download_dir()
+        # if directory doesn't exist, create it
+        Path(dl_dir).mkdir(parents=True, exist_ok=True)
+    dl_path = os.path.join(dl_dir, filename.replace('/', '-').replace(':', '-').replace(' ', '_'))
 
-            with open(dl_path, 'wb') as file:
-                try:
-                    file.write(_file)
-                    print('{} Saved {} to {}...'.format(msg, url, dl_path))
-                except:
-                    print('Failed to save file {}.'.format(dl_path))
-                finally:
-                    file.close()
+    # write file
+    _headers = headers.update(DEFAULT_HEADERS)
+    connector = aiohttp.TCPConnector(limit=40)
+    # timeout = aiohttp.ClientTimeout(total=120)
+    async with aiohttp.ClientSession(
+            connector=connector,
+            headers=_headers,
+            cookies=cookies,
+            # timeout=timeout
+    ) as client:
+        print('Fetching file {} from {}...'.format(filename, url))
+        async with client.get(url) as resp:
+            try:
+                resp.raise_for_status()
+            except ClientResponseError as e:
+                print('Failed to download {} from {}.\n{}'.format(filename, url, e))
+
+            try:
+                f = await aiofiles.open(dl_path, 'wb')
+                await f.write(await resp.read())
+                print('{} Saved {} to {}...'.format(msg, url, dl_path))
+                await asyncio.sleep(5)
+            except ClientConnectionError as e:
+                print('Failed to save {} from {}.\n{}'.format(filename, url, e))
+            # finally:
+            #     await f.close()
+            #     await client.close()
 
 
 async def download_all_request_files(req_id, email=None, pw=None):
-
-    user = load_user(email, pw)
-    rsession = requests.session()
-    login(session=rsession, user=user)
-
-    rsession.headers.update({
-        'x-csrf-token': get_csrf_token(rsession),
-        'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.87 Safari/537.36',
-        'accept-encoding': 'gzip, deflate, br',
-        'x-requested-with': 'XMLHttpRequest',
-        'Connection': 'close',
-    })
+    # log in
+    rsession = login(email=email, pw=pw)
 
     # get the "request id", which is different from the one in the URL for some stupid reason
-    request_response = rsession.get('{}/requests/{}'.format(BASE_URL, req_id))
-    request_content = request_response.content
-    request_id = re.search('request_id: "([0-9]+?)"', str(request_content)).group(1)
+    request_id = parse_request_id(rsession, req_id)
 
-    # get the total number of pages and files
-    docs_response = rsession.get(
-        '{}/documents/batch?request_id={}&amp;state=requester&amp;_=1581458452674",'.format(BASE_URL, request_id))
-    dr_text = docs_response.text
-    page_ints = [int(p) for p in re.findall('&page=([0-9]*)', dr_text)]
-    page_ints.sort()
-    total_pages = 1
-    if len(page_ints) > 0:
-        total_pages = page_ints[len(page_ints) - 1]
+    doc_links = []
+    for state in DOCUMENTS_SECTIONS:
+        # fetch the section
+        section_soup = fetch_section_soup(rsession, request_id, state)
+        section_links = []
 
-    # scrape each page of results and collect document links
-    for page in range(1, total_pages + 1):
-        link_data = []
-        print('Scraping page {} of {}...'.format(page, total_pages))
-        page_response = rsession.get(
-            '{}/documents/batch?request_id={}&state=requester&page={}'.format(BASE_URL, request_id, str(page)))
-        page_text = page_response.text
-        doc_matches = set(re.findall('/documents/([0-9]*)/download[^>]*>([^<]*)', page_text))
+        # collect section-level document links on first page
+        section_first_page_links = []
+        s_num = 1
+        for sfp_link in section_soup.find_all(class_='document-link'):
+            section_first_page_links.append(parse_doc_link(sfp_link, s_num, doc_links))
+            s_num = s_num + 1
+        # and add them to the main collection
+        print('Adding {} document links to collection.'.format(len(section_first_page_links)))
+        section_links.extend(section_first_page_links)
 
-        num = 1
-        for match in doc_matches:
-            link_data.append({
-                'url': '{}/documents/{}/download'.format(BASE_URL, match[0]),
-                'filename': match[1],
-                'num': num,
-            })
-            num = num + 1
-        total = len(link_data)
+        # collect folders, if any
+        document_folders = section_soup.find_all(class_='fa-folder')
+        # if there are folders, we need the labels to fetch the folder content
+        folder_labels = []
+        for folder in document_folders:
+            folder_labels.append(parse_folder_label(folder))
 
-        # download each file and save it to the appropriate location
-        await asyncio.gather(
-            *[adownload_file(
-                url=d['url'],
-                filename=d['filename'],
-                headers=rsession.headers,
-                cookies=rsession.cookies,
-                sub_dir=req_id,
-                msg='{}/{}'.format(d['num'], total),
-            ) for d in link_data if d['url']])
+        # use the folder labels to fetch content of each folder
+        for label in folder_labels:
+            folder_soup = fetch_folder_soup(rsession, label, state, request_id)
+
+            # collect folder-level document links on first page of folder
+            folder_first_page_links = []
+            ffp_num = 1
+            for ffp_link in folder_soup.find_all(class_='document-link'):
+                folder_first_page_links.append(parse_doc_link(ffp_link, ffp_num, doc_links, sub_dir=label))
+                ffp_num = ffp_num + 1
+            # and add them to the main collection
+            print('Adding {} document links to collection.'.format(len(folder_first_page_links)))
+            section_links.extend(folder_first_page_links)
+
+            # check for additional folder-level pages
+            if folder_soup.find_all(class_='pagination'):
+                # determine how many pages there are in the folder
+                folder_page_count = parse_folder_page_count(folder_soup)
+                # collect document links from each folder page
+                for fp_page in range(2, folder_page_count + 1):
+                    # fetch the folder page
+                    folder_page_soup = fetch_folder_page_soup(rsession, label, state, request_id, fp_page)
+
+                    # collect folder-level document links on the folder page
+                    folder_page_links = []
+                    fp_num = 1
+                    for fp_link in folder_page_soup.find_all(class_='document-link'):
+                        folder_page_links.append(parse_doc_link(fp_link, fp_num, doc_links, sub_dir=label))
+                        fp_num = fp_num + 1
+                    # and add them to the main collection
+                    print('Adding {} document links to collection.'.format(len(folder_page_links)))
+                    section_links.extend(folder_page_links)
+
+        # check for additional section-level pages
+        if section_soup.find_all(class_='pagination'):
+            # determine how many pages there are in the section
+            section_page_count = parse_section_page_count(section_soup)
+            # collect document links from each section page
+            for s_page in range(2, section_page_count + 1):
+                # fetch section page
+                section_page_soup = fetch_section_page_soup(rsession, state, request_id, s_page)
+
+                # collect section-level document links on section page
+                section_page_links = []
+                sp_num = 1
+                for sp_link in section_page_soup.find_all(class_='document-link'):
+                    links = parse_doc_link(sp_link, sp_num, doc_links)
+                    section_page_links.append(links)
+                    sp_num = sp_num + 1
+                # and add them to the main collection
+                print('Adding {} document links to collection.'.format(len(section_page_links)))
+                section_links.extend(section_page_links)
+
+        doc_links.extend(section_links)
+
+    await asyncio.gather(
+        *[adownload_file(
+            url=d['url'],
+            filename=d['filename'],
+            headers=rsession.headers,
+            cookies=rsession.cookies,
+            sub_dir='{}/{}'.format(req_id, d['sub_dir']),
+            msg='',
+        ) for d in doc_links])
 
     rsession.close()
 
@@ -119,9 +172,7 @@ async def download_all_documents(email=None, pw=None):
         email (str):
         pw (str):
     """
-    user = load_user(email, pw)
-    rsession = requests.session()
-    login(session=rsession, user=user)
+    rsession = login(email, pw)
 
     # fetch the first page of the documents list to calculate the number of pages.
     count_response = rsession.get('{}?documents_smart_listing[per_page]=100'.format(DOCUMENTS_URL))
@@ -192,10 +243,7 @@ async def download_all_documents(email=None, pw=None):
 
 
 async def print_all_requests(email=None, pw=None, outfile='requests.csv'):
-
-    user = load_user(email, pw)
-    rsession = requests.session()
-    login(session=rsession, user=user)
+    rsession = login(email, pw)
 
     # fetch the first page of the documents list to calculate the number of pages.
     count_response = rsession.get(REQUESTS_URL)

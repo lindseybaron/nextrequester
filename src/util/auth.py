@@ -1,15 +1,11 @@
 import urllib.parse
 
+import requests
 from bs4 import BeautifulSoup as bs
 
-from util.constants import LOGIN_URL, BASE_URL
+from util.config import load_user
+from util.constants import LOGIN_URL, BASE_URL, DEFAULT_HEADERS
 
-initial_headers = {
-    'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.87 Safari/537.36',
-    'accept-encoding': 'gzip, deflate, br',
-    'x-requested-with': 'XMLHttpRequest',
-    'Connection': 'close',
-}
 sign_in_headers = {
     'authority': 'lacity.nextrequest.com',
     'method': 'POST',
@@ -23,13 +19,22 @@ sign_in_headers = {
 }
 
 
-def login(session, user):
+def login(email, pw):
+
+    print('Logging in...')
+
+    user = load_user(email, pw)
+    session = requests.session()
     session.cookies.clear()
-    response = session.request('GET', LOGIN_URL, headers=initial_headers)
+
+    response = session.request('GET', LOGIN_URL, headers=DEFAULT_HEADERS)
     soup = bs(response.content, 'html.parser')
     token = urllib.parse.quote_plus(soup.find(attrs={"name": "csrf-token"})['content'])
     login_params = build_login_params(token=token, email=user['email'], pw=user['pw'])
     session.request('POST', LOGIN_URL, headers=sign_in_headers, params=login_params)
+    session.headers.update({'x-requested-with': 'XMLHttpRequest'})
+
+    return session
 
 
 def build_login_params(token, email, pw):
