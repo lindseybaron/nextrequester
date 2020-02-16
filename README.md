@@ -40,4 +40,3 @@ To download all the files from https://lacity.nextrequest.com/documents:
    ```shell script
    python src/nr.py alldocs
    ```
-It'll take a long time. As of the time of writing this, there are 4489 of them.
