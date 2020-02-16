@@ -10,8 +10,8 @@ import requests
 from aiohttp_retry import RetryClient
 from bs4 import BeautifulSoup as bs
 
-from util.auth import login_session, get_csrf_token
-from util.config import get_download_dir
+from util.auth import login, get_csrf_token
+from util.config import get_download_dir, load_user
 from util.constants import DOCUMENTS_URL, BASE_URL, REQUESTS_URL
 from util.file import build_filename, parse_document_id
 
@@ -49,10 +49,11 @@ async def adownload_file(url, filename, headers, cookies, sub_dir=None, msg=None
                     file.close()
 
 
-async def download_all_request_files(user, req_id):
+async def download_all_request_files(req_id, email=None, pw=None):
 
+    user = load_user(email, pw)
     rsession = requests.session()
-    login_session(session=rsession, user=user)
+    login(session=rsession, user=user)
 
     rsession.headers.update({
         'x-csrf-token': get_csrf_token(rsession),
@@ -73,7 +74,9 @@ async def download_all_request_files(user, req_id):
     dr_text = docs_response.text
     page_ints = [int(p) for p in re.findall('&page=([0-9]*)', dr_text)]
     page_ints.sort()
-    total_pages = page_ints[len(page_ints) - 1]
+    total_pages = 1
+    if len(page_ints) > 0:
+        total_pages = page_ints[len(page_ints) - 1]
 
     # scrape each page of results and collect document links
     for page in range(1, total_pages + 1):
@@ -108,15 +111,18 @@ async def download_all_request_files(user, req_id):
     rsession.close()
 
 
-async def download_all_documents(rsession):
+async def download_all_documents(email=None, pw=None):
     """Download all the files found at /documents. Can be run without auth, but will only include
     all files with auth.
 
     Args:
-        rsession (requests.Session): Session instance (with or without authentication).
-        Note: This session is used for synchronous functionality, whereas asession is used for
-            asynchronous functionality. Cookies and headers are copied from rsession to asession.
+        email (str):
+        pw (str):
     """
+    user = load_user(email, pw)
+    rsession = requests.session()
+    login(session=rsession, user=user)
+
     # fetch the first page of the documents list to calculate the number of pages.
     count_response = rsession.get('{}?documents_smart_listing[per_page]=100'.format(DOCUMENTS_URL))
 
@@ -185,7 +191,12 @@ async def download_all_documents(rsession):
             ) for d in dl_data if d['url']])
 
 
-async def print_all_requests(rsession, outfile='requests.csv'):
+async def print_all_requests(email=None, pw=None, outfile='requests.csv'):
+
+    user = load_user(email, pw)
+    rsession = requests.session()
+    login(session=rsession, user=user)
+
     # fetch the first page of the documents list to calculate the number of pages.
     count_response = rsession.get(REQUESTS_URL)
     soup = bs(count_response.content, 'html.parser')
