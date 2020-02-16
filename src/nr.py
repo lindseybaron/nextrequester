@@ -45,5 +45,28 @@ class NextRequest(object):
 
 
 if __name__ == '__main__':
-    next_requester = NextRequest()
-    fire.Fire(next_requester)
+    # westlakeinvestigations
+    # NextRequest.req('19-7182')  # 0 public, 6 pages requester
+    # NextRequest.req('19-7246')  # 0 public, 0 requester
+    # NextRequest.req('19-7292')  # 0 public, 1 folder with 1 file requester
+    # NextRequest.req('19-7293')  # 0 public, 6 pages requester with 1 folder with 1 file
+    NextRequest.req('19-7100')  # 0 public, several pages of requester
+    # NextRequest.req('19-3717')  # 1 public, 0 requester
+    # NextRequest.req('19-7189')  # 0 public, 3 pages requester
+    # Arasod Hupana
+    # NextRequest.req('19-6277')  # 0 public, 0 requester
+    # NextRequest.req('19-6644')  # 0 public, 1 page requester
+    # NextRequest.req('19-6802')  # 0 public, 1 requester
+    # NextRequest.req('19-6903')  # 0 public, 1 page requester
+    # NextRequest.req('19-6904')  # 0 public, 0 requester
+    # NextRequest.req('19-6915')  # 0 public, 1 folder requester
+    # NextRequest.req('19-7346')
+    # NextRequest.req('19-7347')
+    # NextRequest.req('19-7397')
+    # NextRequest.req('19-4996')  # 0 public, multiple folders and pages requester
+    # NextRequest.alldocs()
+    # NextRequest.allreqs()
+    # NextRequest.allreqs(login=True)
+    # NextRequest.myreqs()
+    # next_requester = NextRequest()
+    # fire.Fire(next_requester)
