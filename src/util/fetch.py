@@ -5,12 +5,11 @@ from pathlib import Path
 
 import aiofiles as aiofiles
 import aiohttp
-import requests
-from aiohttp import ClientResponseError
+from aiohttp import ClientResponseError, ClientConnectionError
 from bs4 import BeautifulSoup as bs
 
 from util.auth import login
-from util.config import get_download_dir, load_user
+from util.config import get_download_dir
 from util.constants import DOCUMENTS_URL, BASE_URL, REQUESTS_URL, DOCUMENTS_SECTIONS, DEFAULT_HEADERS
 from util.file import build_filename, parse_document_id
 from util.parse import parse_doc_link, parse_request_id, parse_folder_label, fetch_folder_soup, fetch_section_soup, \
@@ -39,50 +38,32 @@ async def adownload_file(url, filename, headers, cookies, sub_dir=None, msg=None
     dl_path = os.path.join(dl_dir, filename.replace('/', '-').replace(':', '-').replace(' ', '_'))
 
     # write file
-    print('Fetching file {} from {}...'.format(filename, url))
     _headers = headers.update(DEFAULT_HEADERS)
-    connector = aiohttp.TCPConnector(limit=20)
-    async with aiohttp.ClientSession(connector=connector, headers=_headers, cookies=cookies) as client:
+    connector = aiohttp.TCPConnector(limit=40)
+    # timeout = aiohttp.ClientTimeout(total=120)
+    async with aiohttp.ClientSession(
+            connector=connector,
+            headers=_headers,
+            cookies=cookies,
+            # timeout=timeout
+    ) as client:
+        print('Fetching file {} from {}...'.format(filename, url))
         async with client.get(url) as resp:
             try:
                 resp.raise_for_status()
             except ClientResponseError as e:
-                print('Failed to download {} from {}. {}'.format(filename, url, e))
+                print('Failed to download {} from {}.\n{}'.format(filename, url, e))
 
             try:
                 f = await aiofiles.open(dl_path, 'wb')
                 await f.write(await resp.read())
                 print('{} Saved {} to {}...'.format(msg, url, dl_path))
-            except:
-                print('Failed to save {} from {}.'.format(filename, url))
-            finally:
-                await f.close()
-
-
-# async def adownload_file(url, filename, headers, cookies, sub_dir=None, msg=None):
-#     retry_client = RetryClient(cookies=cookies, headers=headers)
-#     async with retry_client as client:
-#         async with client.get(url, headers=headers, cookies=cookies) as response:
-#             if sub_dir:
-#                 dl_dir = os.path.join(get_download_dir(), sub_dir)
-#                 # if directory doesn't exist, create it
-#                 Path(dl_dir).mkdir(parents=True, exist_ok=True)
-#             else:
-#                 dl_dir = get_download_dir()
-#                 # if directory doesn't exist, create it
-#                 Path(dl_dir).mkdir(parents=True, exist_ok=True)
-#
-#             dl_path = os.path.join(dl_dir, filename.replace('/', '-').replace(':', '-'))
-#             _file = await response.read()
-#
-#             with open(dl_path, 'wb') as file:
-#                 try:
-#                     file.write(_file)
-#                     print('{} Saved {} to {}...'.format(msg, url, dl_path))
-#                 except:
-#                     print('Failed to save file {}.'.format(dl_path))
-#                 finally:
-#                     file.close()
+                await asyncio.sleep(5)
+            except ClientConnectionError as e:
+                print('Failed to save {} from {}.\n{}'.format(filename, url, e))
+            # finally:
+            #     await f.close()
+            #     await client.close()
 
 
 async def download_all_request_files(req_id, email=None, pw=None):
@@ -170,13 +151,6 @@ async def download_all_request_files(req_id, email=None, pw=None):
 
         doc_links.extend(section_links)
 
-    # download each file and save it to the appropriate location
-    # await asyncio.gather(*[adownload_file(
-    #     session=rsession,
-    #     url=d['url'],
-    #     filename=d['filename'],
-    #     sub_dir='{}/{}'.format(req_id, d['sub_dir']),
-    # ) for d in doc_links])
     await asyncio.gather(
         *[adownload_file(
             url=d['url'],
@@ -198,9 +172,7 @@ async def download_all_documents(email=None, pw=None):
         email (str):
         pw (str):
     """
-    user = load_user(email, pw)
-    rsession = requests.session()
-    login(session=rsession, user=user)
+    rsession = login(email, pw)
 
     # fetch the first page of the documents list to calculate the number of pages.
     count_response = rsession.get('{}?documents_smart_listing[per_page]=100'.format(DOCUMENTS_URL))
@@ -271,9 +243,7 @@ async def download_all_documents(email=None, pw=None):
 
 
 async def print_all_requests(email=None, pw=None, outfile='requests.csv'):
-    user = load_user(email, pw)
-    rsession = requests.session()
-    login(session=rsession, user=user)
+    rsession = login(email, pw)
 
     # fetch the first page of the documents list to calculate the number of pages.
     count_response = rsession.get(REQUESTS_URL)
