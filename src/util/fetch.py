@@ -1,17 +1,19 @@
 import asyncio
 import math
 import os
+import re
+import time
+from pathlib import Path
 
 import aiohttp
 import requests
+from aiohttp_retry import RetryClient
 from bs4 import BeautifulSoup as bs
 
-from pages.records_request.request_page import RecordRequestPage
-from util.auth import login_driver, login_session
-from util.constants import DOCUMENTS_URL, BASE_URL, REQUESTS_URL
-from util.driver import get_driver
-from util.file import build_filename, parse_document_id
+from util.auth import login_session, get_csrf_token
 from util.config import get_download_dir
+from util.constants import DOCUMENTS_URL, BASE_URL, REQUESTS_URL
+from util.file import build_filename, parse_document_id
 
 
 async def afetch(session, url):
@@ -22,49 +24,96 @@ async def afetch(session, url):
         return {'text': text, 'url': url}
 
 
-async def adownload_file(session, url, filename, sub_dir=None):
-    # fetch file
-    async with session.get(url) as response:
-        if sub_dir:
-            dl_dir = os.path.join(get_download_dir(), sub_dir)
-        else:
-            dl_dir = get_download_dir()
-        dl_path = os.path.join(dl_dir, filename.replace('/', '-').replace(':', '-'))
-        print('Downloading {} to {}...'.format(url, dl_path))
-        # write file
-        _file = await response.read()
-        with open(dl_path, 'wb') as file:
-            file.write(_file)
+async def adownload_file(url, filename, headers, cookies, sub_dir=None, msg=None):
+    async with RetryClient(headers=headers, cookies=cookies) as client:
+        async with client.get(url, retry_attempts=3) as response:
+            if sub_dir:
+                dl_dir = os.path.join(get_download_dir(), sub_dir)
+                # if directory doesn't exist, create it
+                Path(dl_dir).mkdir(parents=True, exist_ok=True)
+            else:
+                dl_dir = get_download_dir()
+                # if directory doesn't exist, create it
+                Path(dl_dir).mkdir(parents=True, exist_ok=True)
 
-        return filename
+            dl_path = os.path.join(dl_dir, filename.replace('/', '-').replace(':', '-'))
+            _file = await response.read()
+
+            with open(dl_path, 'wb') as file:
+                try:
+                    file.write(_file)
+                    print('{} Saved {} to {}...'.format(msg, url, dl_path))
+                except:
+                    print('Failed to save file {}.'.format(dl_path))
+                finally:
+                    file.close()
 
 
 async def download_all_request_files(user, req_id):
 
-    # load the request page in the browser to collect all the links
-    driver = get_driver()
-    login_driver(driver=driver, user=user)
-    req_page = RecordRequestPage(driver=driver, request_id=req_id).visit()
-    link_data = req_page.collect_all_document_urls()
-
-    # use asession to asynchronously fetch each of the urls in the list
-    rsession = requests.Session()
+    rsession = requests.session()
     login_session(session=rsession, user=user)
-    asession = aiohttp.ClientSession(
-        headers=rsession.headers,
-        cookies=rsession.cookies,
-    )
 
-    # download each file and save it to the appropriate location
-    await asyncio.gather(
-        *[adownload_file(asession, d['url'], d['filename'], sub_dir=req_id) for d in link_data if d['url']])
+    rsession.headers.update({
+        'x-csrf-token': get_csrf_token(rsession),
+        'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.87 Safari/537.36',
+        'accept-encoding': 'gzip, deflate, br',
+        'x-requested-with': 'XMLHttpRequest',
+        'Connection': 'close',
+    })
+
+    # get the "request id", which is different from the one in the URL for some stupid reason
+    request_response = rsession.get('{}/requests/{}'.format(BASE_URL, req_id))
+    request_content = request_response.content
+    request_id = re.search('request_id: "([0-9]+?)"', str(request_content)).group(1)
+
+    # get the total number of pages and files
+    docs_response = rsession.get(
+        '{}/documents/batch?request_id={}&amp;state=requester&amp;_=1581458452674",'.format(BASE_URL, request_id))
+    dr_text = docs_response.text
+    page_ints = [int(p) for p in re.findall('&page=([0-9]*)', dr_text)]
+    page_ints.sort()
+    total_pages = page_ints[len(page_ints) - 1]
+
+    # scrape each page of results and collect document links
+    for page in range(1, total_pages + 1):
+        link_data = []
+        print('Scraping page {} of {}...'.format(page, total_pages))
+        page_response = rsession.get(
+            '{}/documents/batch?request_id={}&state=requester&page={}'.format(BASE_URL, request_id, str(page)))
+        page_text = page_response.text
+        doc_matches = set(re.findall('/documents/([0-9]*)/download[^>]*>([^<]*)', page_text))
+
+        num = 1
+        for match in doc_matches:
+            link_data.append({
+                'url': '{}/documents/{}/download'.format(BASE_URL, match[0]),
+                'filename': match[1],
+                'num': num,
+            })
+            num = num + 1
+        total = len(link_data)
+
+        # download each file and save it to the appropriate location
+        await asyncio.gather(
+            *[adownload_file(
+                url=d['url'],
+                filename=d['filename'],
+                headers=rsession.headers,
+                cookies=rsession.cookies,
+                sub_dir=req_id,
+                msg='{}/{}'.format(d['num'], total),
+            ) for d in link_data if d['url']])
+
+    rsession.close()
 
 
 async def download_all_documents(rsession):
     """Download all the files found at /documents. Can be run without auth, but will only include
     all files with auth.
 
-    :param rsession: requests.Session() instance (with or without authentication).
+    Args:
+        rsession (requests.Session): Session instance (with or without authentication).
         Note: This session is used for synchronous functionality, whereas asession is used for
             asynchronous functionality. Cookies and headers are copied from rsession to asession.
     """
@@ -103,9 +152,12 @@ async def download_all_documents(rsession):
 
         # fetch each of the document pages to get the full filename (since the list tends to cut them off)
         doc_page_responses = await asyncio.gather(*[afetch(asession, d) for d in doc_page_urls])
+        num = 1
+
         for doc_page_response in doc_page_responses:
             doc_page = bs(doc_page_response['text'], 'html.parser')
             page_header = doc_page.find(class_='document-header')
+
             if page_header:
                 filename = build_filename(page_header, doc_page_response['url'])
             else:
@@ -116,11 +168,21 @@ async def download_all_documents(rsession):
             dl_data.append({
                 'filename': filename,
                 'url': doc_page_response['url'],
+                'num': num,
             })
+            num = num + 1
+        total = len(dl_data)
 
         # download each file and save it to the appropriate location
         await asyncio.gather(
-            *[adownload_file(asession, d['url'], d['filename'], sub_dir='documents') for d in dl_data if d['url']])
+            *[adownload_file(
+                headers=rsession.headers,
+                cookies=rsession.cookies,
+                url=d['url'],
+                filename=d['filename'],
+                sub_dir='documents',
+                msg='{}/{}'.format(d['num'], total),
+            ) for d in dl_data if d['url']])
 
 
 async def print_all_requests(rsession, outfile='requests.csv'):
