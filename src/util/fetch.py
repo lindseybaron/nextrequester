@@ -65,7 +65,7 @@ async def adownload_file(url, filename, headers, cookies, sub_dir=None, msg=None
                 await f.close()
 
 
-async def download_all_request_files(req_id, email=None, pw=None):
+async def download_all_request_files(req_id, email=None, pw=None, download_files=True):
     # log in
     rsession = login(email=email, pw=pw)
 
@@ -156,15 +156,16 @@ async def download_all_request_files(req_id, email=None, pw=None):
         for l in doc_links:
             file.write(l['url'] + '\n')
 
-    await asyncio.gather(
-        *[adownload_file(
-            url=d['url'],
-            filename=d['filename'],
-            headers=rsession.headers,
-            cookies=rsession.cookies,
-            sub_dir='{}/{}'.format(req_id, d['sub_dir']),
-            msg='',
-        ) for d in doc_links])
+    if download_files:
+        await asyncio.gather(
+            *[adownload_file(
+                url=d['url'],
+                filename=d['filename'],
+                headers=rsession.headers,
+                cookies=rsession.cookies,
+                sub_dir='{}/{}'.format(req_id, d['sub_dir']),
+                msg='',
+            ) for d in doc_links])
 
     rsession.close()
 
