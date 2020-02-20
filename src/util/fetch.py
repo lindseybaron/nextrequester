@@ -100,7 +100,7 @@ async def gather_all_requests(session):
     return requests
 
 
-async def fetch_request_pages(session, request_data, batch_size=10):
+async def fetch_request_pages(session, request_data, batch_size=50):
 
     pages = []
 

@@ -108,7 +108,7 @@ async def download_all_request_files(req_id, email=None, pw=None):
         for l in doc_links:
             file.write(l['url'] + '\n')
 
-    batches = batch_data(data=doc_links, batch_size=20)
+    batches = batch_data(data=doc_links, batch_size=50)
     for batch in batches:
         await asyncio.gather(
             *[adownload_file(
