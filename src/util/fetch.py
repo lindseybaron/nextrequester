@@ -61,9 +61,8 @@ async def adownload_file(url, filename, headers, cookies, sub_dir=None, msg=None
                 await asyncio.sleep(5)
             except ClientConnectionError as e:
                 print('Failed to save {} from {}.\n{}'.format(filename, url, e))
-            # finally:
-            #     await f.close()
-            #     await client.close()
+            finally:
+                await f.close()
 
 
 async def download_all_request_files(req_id, email=None, pw=None):
