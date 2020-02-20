@@ -32,7 +32,7 @@ Currently hard-coded for Los Angeles, but you should be able to just change the 
 ### Single Request
 To download all the files for a single records request, use the request ID from the url.
    ```shell script
-   python src/nr.py batch [request-id]
+   python src/nr.py req [request-id]
    ```
 
 ### All Files From 'Documents'
