@@ -17,7 +17,7 @@ from util.parse import (
 )
 
 
-async def download_all_request_files(req_id, email=None, pw=None):
+async def download_all_request_files(req_id, email=None, pw=None, download_files=True):
     # log in
     rsession = login(email=email, pw=pw)
 
@@ -108,17 +108,18 @@ async def download_all_request_files(req_id, email=None, pw=None):
         for l in doc_links:
             file.write(l['url'] + '\n')
 
-    batches = batch_data(data=doc_links, batch_size=50)
-    for batch in batches:
-        await asyncio.gather(
-            *[adownload_file(
-                url=d['url'],
-                filename=d['filename'],
-                headers=rsession.headers,
-                cookies=rsession.cookies,
-                sub_dir='{}/{}'.format(req_id, d['sub_dir']),
-                msg='',
-            ) for d in batch])
+    if download_files:
+        batches = batch_data(data=doc_links, batch_size=50)
+        for batch in batches:
+            await asyncio.gather(
+                *[adownload_file(
+                    url=d['url'],
+                    filename=d['filename'],
+                    headers=rsession.headers,
+                    cookies=rsession.cookies,
+                    sub_dir='{}/{}'.format(req_id, d['sub_dir']),
+                    msg='',
+                ) for d in batch])
 
     rsession.close()
 
@@ -244,7 +245,7 @@ async def print_my_requests(email=None, pw=None, outfile=None):
                     req.find(class_='request_date').find('strong').text.strip(),
                     '%B %d, %Y'
                 ),
-                'desc': req.find(class_='request-text').text.strip(),
+                'desc': req.find(class_='request-text').text.strip().replace('"', '\''),
                 'depts': req.find(class_='current-department').text.strip(),
                 'pocs': req.find(class_='request-detail').text.strip(),
                 'requester': req.find(class_='requester-details').find(class_='fa-envelope').next_sibling.strip(),
@@ -267,5 +268,4 @@ async def print_my_requests(email=None, pw=None, outfile=None):
                 pocs=req['pocs'],
             )
             file.write(line)
-
             print(req['url'] + '\n', file=open(url_list_path, 'a'))

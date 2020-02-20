@@ -60,7 +60,6 @@ async def adownload_file(url, filename, headers, cookies, sub_dir=None, msg=None
                 print('Failed to save {} from {}.\n{}'.format(filename, url, e))
             finally:
                 await f.close()
-                await client.close()
 
 
 async def gather_all_requests(session):

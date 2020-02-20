@@ -8,7 +8,7 @@ from nr_functions import download_all_request_files, download_all_documents, pri
 class NextRequest(object):
 
     @staticmethod
-    def req(req, email=None, pw=None):
+    def req(req, email=None, pw=None, dl=True):
         """Get all documents from a single request.
 
         Args:
@@ -17,7 +17,7 @@ class NextRequest(object):
             pw (str): The password for the user account. Can also be set in secret.yaml.
         """
         loop = asyncio.get_event_loop()
-        loop.run_until_complete(download_all_request_files(email=email, pw=pw, req_id=req))
+        loop.run_until_complete(download_all_request_files(email=email, pw=pw, req_id=req, download_files=dl))
 
     @staticmethod
     def alldocs(email=None, pw=None):
