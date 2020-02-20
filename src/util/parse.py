@@ -27,6 +27,22 @@ def parse_request_id(session, user_req_id):
     return request_id
 
 
+def parse_request_row(row):
+    link = row.find('a')
+    cols = row.find_all('td')
+
+    return ({
+        'url': '{}{}'.format(BASE_URL, row.find('a', href=True)['href']),
+        'id': link.text.replace(link.find('span').text, '').strip(),
+        'status': 'open' if len(row.find_all(class_='fa-folder-open')) > 0 else 'closed',
+        'date': cols[len(cols) - 4].text.strip(),
+        'desc': cols[len(cols) - 3].find('a').text.replace(
+            cols[len(cols) - 3].find('span').text, '').replace('\n', ' ').replace('\t', ' ').replace('"', '\'').strip(),
+        'depts': cols[len(cols) - 2].text.strip(),
+        'pocs': cols[len(cols) - 1].text.strip(),
+    })
+
+
 def parse_folder_label(folder):
     return folder.parent.find(class_='font-size-14').text.replace(' ', '+')
 
@@ -51,7 +67,7 @@ def extract_documents_section_html(text, state):
     for l in lines:
         if '{}-docs'.format(state) in l:
             return l.replace('$("#{}-docs").html("'.format(state), '').replace('");', '').replace('\\\'',
-                                                                                                   '\'').replace(
+                                                                                                  '\'').replace(
                 '\\n', '').replace('\\"', '"').replace('  ', '').replace('<\\/', '</')
 
 

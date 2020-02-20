@@ -2,7 +2,7 @@ import asyncio
 
 import fire
 
-from util.fetch import download_all_documents, download_all_request_files, print_all_requests
+from nr_functions import download_all_request_files, download_all_documents, print_all_requests, print_my_requests
 
 
 class NextRequest(object):
@@ -42,6 +42,18 @@ class NextRequest(object):
         """
         loop = asyncio.get_event_loop()
         loop.run_until_complete(print_all_requests(email=email, pw=pw))
+
+    @staticmethod
+    def myreqs(email=None, pw=None, outfile='my_requests.csv'):
+        """Print a list of requests submitted by the current user.
+
+        Args:
+            email (str): The email address for the user account. Can also be set in secret.yaml.
+            pw (str): The password for the user account. Can also be set in secret.yaml.
+            outfile (str): Optional parameter to specify the name of the output file.
+        """
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(print_my_requests(email=email, pw=pw, outfile=outfile))
 
 
 if __name__ == '__main__':
