@@ -10,7 +10,7 @@ from bs4 import BeautifulSoup as bs
 
 from util.auth import login
 from util.config import get_download_dir
-from util.constants import DOCUMENTS_URL, BASE_URL, REQUESTS_URL, DOCUMENTS_SECTIONS, DEFAULT_HEADERS
+from util.constants import DOCUMENTS_URL, BASE_URL, REQUESTS_URL, DOCUMENTS_SECTIONS, DEFAULT_HEADERS, DATA_DIR
 from util.file import build_filename, parse_document_id
 from util.parse import parse_doc_link, parse_request_id, parse_folder_label, fetch_folder_soup, fetch_section_soup, \
     fetch_folder_page_soup, parse_folder_page_count, parse_section_page_count, fetch_section_page_soup
@@ -149,6 +149,12 @@ async def download_all_request_files(req_id, email=None, pw=None):
                 section_links.extend(section_page_links)
 
         doc_links.extend(section_links)
+
+    link_filename = '{}_links.txt'.format(req_id)
+    link_file_path = os.path.abspath(os.path.join(DATA_DIR, link_filename))
+    with open(link_file_path, 'w') as file:
+        for l in doc_links:
+            file.write(l['url'] + '\n')
 
     await asyncio.gather(
         *[adownload_file(
