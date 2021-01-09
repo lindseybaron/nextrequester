@@ -56,7 +56,7 @@ def parse_section_page_count(section):
 def parse_folder_page_count(folder):
     folder_pagination = folder.find(class_='pagination')
     folder_total = int(folder_pagination.next_sibling.next_sibling.next_sibling.next_sibling.text)
-    return math.ceil(folder_total / 20)
+    return math.ceil(folder_total / 50)
 
 
 # There are two sections of responsive file attachments visible to user: public and requester.
