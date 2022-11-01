@@ -1,6 +1,6 @@
 # nextrequester
 
-A hacky bit of python to download responsive files from the atrociously designed NextRequest public records request websites.
+A hacky bit of codes to download responsive files from the atrociously designed NextRequest public records request websites.
 
 Currently hard-coded for Los Angeles, but you should be able to just change the value of `BASE_URL` to whatever you want. 
 
