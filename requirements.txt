@@ -5,7 +5,7 @@ bs4==0.0.1
 fire==0.2.1
 polling==0.3.1
 pytest==5.3.2
-PyYAML==5.2
+PyYAML==5.4
 requests==2.22.0
 selenium==3.141.0
 selenium-requests==1.3
